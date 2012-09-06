@@ -29,6 +29,8 @@
 -behaviour(elli_handler).
 -export([handle/2, handle_event/3]).
 
+-define(SYSLOG_OPTIONS, [name, ip ,port]).
+
 
 handle(_Req, _Args) ->
     %% We are installed as a middleware, ignore everything.
@@ -94,18 +96,37 @@ handle_event(client_timeout, [_When], _Config) ->
     ok;
 
 handle_event(elli_startup, [], Config) ->
-    {ok, _} = elli_access_log_server:start_link(name(Config), facility(Config)),
+    MsgOpts = msg_opts(Config),
 
     case whereis(name(Config)) of
         undefined ->
             {ok, _Pid} = syslog:start_link(name(Config),
-                                           proplists:get_value(ip, Config),
-                                           proplists:get_value(port, Config)),
-            ok;
+                                           ip(Config),
+                                           port(Config));
         Pid when is_pid(Pid) ->
             ok
-    end.
+    end,
+
+    {ok, _} = elli_access_log_server:start_link(name(Config), MsgOpts),
+    ok.
 
 
-name(Config) -> proplists:get_value(name, Config).
-facility(Config) -> proplists:get_value(facility, Config, local0).
+msg_opts(Config) ->
+    {_, MsgOpts} = lists:partition(fun ({K, _}) ->
+                                           lists:member(K, ?SYSLOG_OPTIONS)
+                                   end, Config),
+    msg_opts_with_defaults(MsgOpts).
+
+msg_opts_with_defaults(MsgOpts) ->
+    {ok, Host} = inet:gethostname(),
+    Defaults = [{host, Host},
+                {ident, node()},
+                {facility, local0}],
+
+    lists:ukeymerge(1, lists:keysort(1, MsgOpts),
+                       lists:keysort(1, Defaults)).
+
+
+name(Config) -> proplists:get_value(name, Config, syslog).
+ip(Config)   -> proplists:get_value(ip, Config, "127.0.0.1").
+port(Config) -> proplists:get_value(port, Config, 514).

@@ -8,7 +8,7 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--record(state, {name, facility}).
+-record(state, {name, msg_opts}).
 
 %%
 %% API
@@ -24,12 +24,12 @@ log(Name, Msg) ->
 %% gen_server callbacks
 %%
 
-init([Name, Facility]) ->
+init([Name, MsgOpts]) ->
     Name = ets:new(Name, [ordered_set, named_table, public,
                               {write_concurrency, true}]),
 
     erlang:send_after(1000, self(), flush),
-    {ok, #state{name = Name, facility = Facility}}.
+    {ok, #state{name = Name, msg_opts = MsgOpts}}.
 
 
 handle_call(_Request, _From, State) ->
@@ -41,10 +41,8 @@ handle_cast(_Msg, State) ->
 
 handle_info(flush, State) ->
     erlang:send_after(1000, self(), flush),
-    Opts = [{ident, node()},
-            {facility, State#state.facility}],
     SyslogMessages = lists:map(fun ({_Ts, Msg}) ->
-                                       {Msg, Opts}
+                                       {Msg, State#state.msg_opts}
                                end, flush(State#state.name)),
 
     syslog:multi_send(State#state.name, SyslogMessages),
