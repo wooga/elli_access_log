@@ -14,8 +14,8 @@
 %% API
 %%
 
-start_link(Name, Facility) ->
-    gen_server:start_link({local, Name}, ?MODULE, [Name, Facility], []).
+start_link(Name, MsgOpts) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Name, MsgOpts], []).
 
 log(Name, Msg) ->
     (catch ets:insert(Name, {erlang:now(), Msg})).
@@ -76,4 +76,3 @@ flush_before(Now, Name, Key, Acc) when Now >= Key ->
     flush_before(Now, Name, ets:next(Name, Key), [Value | Acc]);
 flush_before(_Now, _Name, _Key, Acc) ->
     Acc.
-
