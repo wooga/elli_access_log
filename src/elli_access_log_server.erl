@@ -67,7 +67,7 @@ flush_before(Now, Name) ->
     flush_before(Now, Name, ets:first(Name), []).
 
 flush_before(_Now, _Name, '$end_of_table', Acc) ->
-    Acc;
+    lists:reverse(Acc);
 flush_before(Now, Name, Key, Acc) when Now >= Key ->
     [Value] = ets:lookup(Name, Key),
     true = ets:delete(Name, Key),
