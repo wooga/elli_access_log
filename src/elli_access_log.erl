@@ -71,6 +71,11 @@ handle_event(request_complete, [Req, ResponseCode, _ResponseHeaders,
     elli_access_log_server:log(name(Config), Msg),
     ok;
 
+handle_event(chunk_complete, [Req, ResponseCode, ResponseHeaders,
+                              _ClosingEnd, Timings], Config) ->
+    handle_event(request_complete, [Req, ResponseCode, ResponseHeaders,
+                                    <<>>, Timings], Config);
+
 handle_event(request_throw, [Req, Exception, Stack], _Config) ->
     error_logger:error_msg("exception: ~p~nstack: ~p~nrequest: ~p~n",
                            [Exception, Stack, elli_request:to_proplist(Req)]),
@@ -108,7 +113,12 @@ handle_event(elli_startup, [], Config) ->
     end,
 
     {ok, _} = elli_access_log_server:start_link(name(Config), MsgOpts),
+    ok;
+
+handle_event(_, _, _) ->
+    %% Future-proof.
     ok.
+
 
 
 msg_opts(Config) ->
